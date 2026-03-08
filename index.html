@@ -140,6 +140,15 @@
     .zoom-btn:hover { background: #f3f4f6; }
     .zoom-btn.plus { font-size: 26px; font-weight: 400; padding-bottom: 5px; }
     .zoom-btn.minus { font-size: 26px; font-weight: 400; padding-bottom: 5px; }
+    .zoom-btn.reset {
+      font-size: 0;
+      padding: 0;
+    }
+    .zoom-btn.reset svg {
+      width: 18px;
+      height: 18px;
+      color: #9ca3af;
+    }
     .zoom-divider {
       height: 1px;
       background: #e5e7eb;
@@ -192,6 +201,10 @@
     </div>
     <div class="custom-zoom">
       <div class="zoom-stack">
+        <button class="zoom-btn reset" id="zoomReset" type="button" aria-label="Reset zoom">
+          <svg class="tds-icon tds-icon-crosshair-filled" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10m1-2.062A8.004 8.004 0 0 0 19.938 13H16a1 1 0 1 1 0-2h3.938A8.004 8.004 0 0 0 13 4.062V8a1 1 0 1 1-2 0V4.062A8.004 8.004 0 0 0 4.062 11H8a1 1 0 1 1 0 2H4.062A8.004 8.004 0 0 0 11 19.938V16a1 1 0 1 1 2 0z"></path></svg>
+        </button>
+        <div class="zoom-divider"></div>
         <button class="zoom-btn plus" id="zoomIn" type="button" aria-label="Zoom in">+</button>
         <div class="zoom-divider"></div>
         <button class="zoom-btn minus" id="zoomOut" type="button" aria-label="Zoom out">−</button>
@@ -684,6 +697,14 @@
     });
 
     document.getElementById('zoomIn').addEventListener('click', () => map.zoomIn());
+    document.getElementById('zoomReset').addEventListener('click', () => {
+      const isMobileViewport = window.matchMedia('(max-width: 860px)').matches;
+      if (isMobileViewport) {
+        map.setView(mobileDefaultCenter, mobileDefaultZoom, { animate: false });
+      } else if (boundaryLayer && boundaryLayer.getBounds && boundaryLayer.getBounds().isValid()) {
+        map.fitBounds(boundaryLayer.getBounds(), { padding: [20, 20], animate: false });
+      }
+    });
     document.getElementById('zoomOut').addEventListener('click', () => map.zoomOut());
     map.on('zoomend', () => {
       if (!boundariesByView[currentView] || !registrationsByView[currentView]) return;
