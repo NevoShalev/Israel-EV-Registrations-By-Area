@@ -583,13 +583,57 @@
       pane: 'overlayPane'
     }).addTo(map);
 
+    async function fetchJsonOrThrow(sourceName, url) {
+      const controller = new AbortController();
+      const timeoutMs = 15000;
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const res = await fetch(url, {
+          mode: 'cors',
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        if (!res.ok) {
+          throw new Error(`${sourceName}: HTTP ${res.status} ${res.statusText}`);
+        }
+
+        const text = await res.text();
+        if (!text) {
+          throw new Error(`${sourceName}: empty response body`);
+        }
+
+        try {
+          return JSON.parse(text);
+        } catch (parseError) {
+          throw new Error(`${sourceName}: invalid JSON (${parseError.message})`);
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          throw new Error(`${sourceName}: request timed out after ${timeoutMs / 1000}s`);
+        }
+        throw new Error(`${sourceName}: ${err.message || String(err)}`);
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     Promise.all([
-      fetch(nafaGeoJsonUrl).then((res) => res.json()),
-      fetch(districtGeoJsonUrl).then((res) => res.json()),
-      fetch(registrationsApiUrl).then((res) => res.json())
+      fetchJsonOrThrow('Nafa boundaries API', nafaGeoJsonUrl),
+      fetchJsonOrThrow('District boundaries API', districtGeoJsonUrl),
+      fetchJsonOrThrow('Registrations API', registrationsApiUrl)
     ])
       .then(([nafaGeojson, districtGeojson, registrationsPayload]) => {
+        if (!Array.isArray(nafaGeojson?.features)) {
+          throw new Error('Nafa boundaries API: invalid GeoJSON payload (missing features array)');
+        }
+        if (!Array.isArray(districtGeojson?.features)) {
+          throw new Error('District boundaries API: invalid GeoJSON payload (missing features array)');
+        }
         const records = registrationsPayload?.result?.records || [];
+        if (!Array.isArray(records)) {
+          throw new Error('Registrations API: invalid payload (result.records is not an array)');
+        }
         boundariesByView.nafa = nafaGeojson;
         boundariesByView.district = districtGeojson;
         registrationsByView.nafa = aggregateRegistrationsByField(records, 'nafa_nm', normalizeNafaName);
@@ -600,7 +644,11 @@
       })
       .catch((err) => {
         console.error(err);
-        alert('Failed to load boundaries or registration API data.');
+        alert(
+          'Failed to load live map data.\n\n' +
+          `${err.message}\n\n` +
+          'If this is on mobile Safari, try refreshing on stable connection and check if content blockers/VPN are enabled.'
+        );
       });
 
     document.getElementById('viewNafaBtn').addEventListener('click', () => {
