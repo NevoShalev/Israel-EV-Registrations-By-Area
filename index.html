@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Israel EV Registrations By Area</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    html, body { margin: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    #map { width: 100%; height: 100%; }
+
+    /* ── Top control bar ── */
+    .top-ui {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    /* tds-form-input--default */
+    .tds-form-input {
+      display: inline-flex;
+      align-items: center;
+      height: 44px;
+      background: #fff;
+      border: 1px solid #eaeaea;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 5px 10px rgba(0,0,0,.070);
+    }
+    .ctrl-label {
+      padding: 0 8px 0 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #1d1f21;
+      white-space: nowrap;
+      user-select: none;
+      display: flex;
+      align-items: center;
+    }
+    /* tds-tab-list--toggle with animated backdrop */
+    .view-toggle {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: #efefef;
+      border-radius: 6px;
+      padding: 4px;
+      margin: 0 6px;
+    }
+    .toggle-backdrop {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      border-radius: 4px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+      pointer-events: none;
+      transition: left 0.35s cubic-bezier(0.75, 0, 0, 1),
+                  width 0.35s cubic-bezier(0.75, 0, 0, 1);
+    }
+    .switch-btn {
+      position: relative;
+      z-index: 1;
+      border: none;
+      padding: 5px 12px;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      color: #6b7280;
+      background: transparent;
+      transition: color 0.2s;
+      white-space: nowrap;
+      font-family: inherit;
+      line-height: 1;
+    }
+    .switch-btn.active {
+      color: #1d1f21;
+      font-weight: 600;
+    }
+    /* tds-icon-btn tds-icon-btn--large */
+    .tds-icon-btn {
+      border: 1px solid #eaeaea;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.14s;
+      font-family: inherit;
+      flex-shrink: 0;
+      box-shadow: 0 5px 10px rgba(0,0,0,.070);
+    }
+    .tds-icon-btn--large {
+      width: 44px;
+      height: 44px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #1d1f21;
+      letter-spacing: 0.3px;
+    }
+    .tds-icon-btn:hover { background: #f3f4f6; }
+
+    /* ── Zoom ── */
+    .custom-zoom {
+      position: relative;
+      z-index: 1000;
+      box-shadow: 0 5px 10px rgba(0,0,0,.070);
+    }
+    .zoom-stack {
+      width: 44px;
+      border: 1px solid #eaeaea;
+      border-radius: 6px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .zoom-btn {
+      width: 44px;
+      height: 44px;
+      border: 0;
+      background: #fff;
+      cursor: pointer;
+      color: #1d1f21;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      font-family: inherit;
+    }
+    .zoom-btn:hover { background: #f3f4f6; }
+    .zoom-btn.plus { font-size: 26px; font-weight: 500; padding-bottom: 5px; }
+    .zoom-btn.minus { font-size: 26px; font-weight: 500; padding-bottom: 5px; }
+    .zoom-divider {
+      height: 1px;
+      background: #e5e7eb;
+    }
+    .nafa-label {
+      direction: rtl;
+      text-align: center;
+      color: #374151;
+      font-weight: 700;
+      line-height: 1.2;
+      text-shadow:
+        -1px -1px 0 #fff,
+         1px -1px 0 #fff,
+        -1px  1px 0 #fff,
+         1px  1px 0 #fff;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .nafa-label.lang-en {
+      direction: ltr;
+    }
+    .nafa-label .name {
+      font-size: 14px;
+    }
+
+    .nafa-label .value {
+      font-size: 14px;
+      color: #374151;
+    }
+
+    .leaflet-tooltip.nafa-center-label {
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-ui">
+    <div class="tds-form-input">
+      <span class="ctrl-label" id="ctrlLabel">Electric Vehicles by</span>
+      <div class="view-toggle" id="viewToggle">
+        <div class="toggle-backdrop" id="toggleBackdrop" style="left: 4px; width: 99px; height: 22px;"></div>
+        <button class="switch-btn active" id="viewNafaBtn" type="button">Sub-District</button>
+        <button class="switch-btn" id="viewDistrictBtn" type="button">District</button>
+      </div>
+    </div><div class="">
+      <button class="tds-icon-btn tds-icon-btn--large" id="langToggleBtn" type="button" style="padding: 0px !important; width: 46px !important; height: 46px !important;">EN</button>
+    </div>
+    <div class="custom-zoom">
+      <div class="zoom-stack">
+        <button class="zoom-btn plus" id="zoomIn" type="button" aria-label="Zoom in">+</button>
+        <div class="zoom-divider"></div>
+        <button class="zoom-btn minus" id="zoomOut" type="button" aria-label="Zoom out">−</button>
+      </div>
+    </div>
+  </div>
+  <div id="map"></div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+  <script>
+    const uiText = {
+      he: {
+        label: 'רכבים חשמליים לפי',
+        nafa: 'נפה',
+        district: 'מחוז',
+        locale: 'he-IL'
+      },
+      en: {
+        label: 'Electric Vehicles by',
+        nafa: 'Sub-District',
+        district: 'District',
+        locale: 'en-US'
+      }
+    };
+
+    const nafaNameEn = {
+      'אשקלון': 'Ashkelon',
+      'באר שבע': 'Beer Sheva',
+      'השרון': 'HaSharon',
+      'חדרה': 'Hadera',
+      'חיפה': 'Haifa',
+      'יזרעאל': 'Yizreel',
+      'ירושלים': 'Jerusalem',
+      'כנרת': 'Kinneret',
+      'עכו': 'Akko',
+      'פתח תקווה': 'Petah Tikva',
+      'צפת': 'Safed',
+      'רחובות': 'Rehovot',
+      'רמלה': 'Ramla',
+      'רמת הגולן': 'Golan Heights',
+      'תל אביב - יפו': 'Tel Aviv-Yafo'
+    };
+    const mahozNameEn = {
+      'דרום': 'South',
+      'מרכז': 'Center',
+      'צפון': 'North',
+      'חיפה': 'Haifa',
+      'ירושלים': 'Jerusalem',
+      'תל אביב': 'Tel Aviv',
+      'אזור יהודה ושומרון': 'Judea and Samaria Area'
+    };
+    const districtLabelLatLng = {
+      'דרום': [30.997847036243304, 34.837807851961934],
+      'חיפה': [32.7579969865393, 35.00686072927522],
+      'צפון': [32.90185624017152, 35.45685122332712],
+      'ירושלים': [31.762641912476376, 35.0578942127875],
+      'אזור יהודה ושומרון': [32.05610209251539, 35.31473709207485],
+      'מרכז': [31.9299796841843, 34.85977973566923],
+      'תל אביב': [32.08770720262966, 34.80727715377404]
+    };
+    const judeaSamariaSubdistrictLatLng = [32.05610209251539, 35.31473709207485];
+
+    let currentLanguage = 'he';
+    let currentView = 'nafa';
+    let boundaryLayer = null;
+    let labelLayer = null;
+    const boundariesByView = { nafa: null, district: null };
+    const registrationsByView = { nafa: null, district: null };
+
+    const registrationsApiUrl =
+      'https://data.gov.il/api/3/action/datastore_search?resource_id=07421a4e-5b12-4444-9173-5ca297b31f79&distinct=false&plain=true&limit=100&include_total=true&records_format=objects';
+    const nafaGeoJsonUrl = 'https://services7.arcgis.com/PB5LjwcnCrkGJLZ7/arcgis/rest/services/%D7%A0%D7%A4%D7%95%D7%AA_%D7%99%D7%A9%D7%A8%D7%90%D7%9C_%D7%9E%D7%A9%D7%A8%D7%93_%D7%94%D7%A4%D7%A0%D7%99%D7%9D/FeatureServer/5/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson';
+    const districtGeoJsonUrl = 'https://services7.arcgis.com/PB5LjwcnCrkGJLZ7/arcgis/rest/services/Mahozot_muni_il/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson';
+
+    function normalizeNafaName(name) {
+      if (!name) return '';
+      const trimmed = String(name).trim();
+      const aliases = {
+        'תל אביב': 'תל אביב - יפו',
+        'גולן': 'רמת הגולן',
+        'רמת הגולן ': 'רמת הגולן'
+      };
+      return aliases[trimmed] || trimmed;
+    }
+
+    function normalizeMahozName(name) {
+      if (!name) return '';
+      const trimmed = String(name).trim();
+      const aliases = {
+        'הדרום': 'דרום',
+        'הצפון': 'צפון',
+        'המרכז': 'מרכז',
+        'אזור יהודה ושומרון': 'אזור יהודה ושומרון'
+      };
+      return aliases[trimmed] || trimmed;
+    }
+
+    function parseCarNum(value) {
+      if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+      if (value == null) return 0;
+      const numeric = String(value).replace(/[^\d.-]/g, '');
+      const parsed = Number(numeric);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function aggregateRegistrationsByField(records, fieldName, normalizer) {
+      const aggregated = {};
+      records.forEach((row) => {
+        const raw = row[fieldName];
+        const key = normalizer(raw);
+        if (!key) return;
+        aggregated[key] = (aggregated[key] || 0) + parseCarNum(row.car_num);
+      });
+      return aggregated;
+    }
+
+    function getDisplayAreaName(areaName) {
+      if (currentLanguage === 'en') {
+        if (currentView === 'nafa') {
+          return nafaNameEn[areaName] || areaName;
+        }
+        return mahozNameEn[areaName] || areaName;
+      }
+      return areaName;
+    }
+
+    function updateBackdrop() {
+      const toggle = document.getElementById('viewToggle');
+      const backdrop = document.getElementById('toggleBackdrop');
+      const activeBtn = toggle && toggle.querySelector('.switch-btn.active');
+      if (!toggle || !backdrop || !activeBtn) return;
+      const padding = 4;
+      let left = padding;
+      for (const btn of toggle.querySelectorAll('.switch-btn')) {
+        if (btn === activeBtn) break;
+        left += btn.offsetWidth;
+      }
+      backdrop.style.left = left + 'px';
+      backdrop.style.width = activeBtn.offsetWidth + 'px';
+      backdrop.style.height = (toggle.offsetHeight - padding * 2) + 'px';
+    }
+
+    function updateLanguageUI() {
+      // Keep top controls fixed in English.
+      document.getElementById('ctrlLabel').textContent = uiText.en.label;
+      document.getElementById('viewNafaBtn').textContent = uiText.en.nafa;
+      document.getElementById('viewDistrictBtn').textContent = uiText.en.district;
+      document.getElementById('langToggleBtn').textContent = currentLanguage === 'he' ? 'EN' : 'עב';
+      requestAnimationFrame(updateBackdrop);
+    }
+
+    function getFeatureAreaName(feature) {
+      if (currentView === 'district') {
+        return normalizeMahozName(feature.properties?.Mahoz);
+      }
+      return normalizeNafaName(feature.properties?.Nafa);
+    }
+
+    function renderBoundaries(fitToBounds) {
+      const boundariesGeoJson = boundariesByView[currentView];
+      const registrationsByArea = registrationsByView[currentView];
+      if (!boundariesGeoJson || !registrationsByArea) return;
+      if (boundaryLayer) {
+        map.removeLayer(boundaryLayer);
+      }
+      if (labelLayer) {
+        map.removeLayer(labelLayer);
+      }
+      labelLayer = L.layerGroup().addTo(map);
+      const matchedAreas = new Set();
+
+      const values = Object.values(registrationsByArea).sort((a, b) => a - b);
+      const q = (p) => {
+        if (!values.length) return 0;
+        return values[Math.floor((values.length - 1) * p)];
+      };
+      const q20 = q(0.2);
+      const q40 = q(0.4);
+      const q60 = q(0.6);
+      const q80 = q(0.8);
+      const colorFor = (value) => {
+        if (value <= q20) return '#2c7bb6';
+        if (value <= q40) return '#abd9e9';
+        if (value <= q60) return '#ffffbf';
+        if (value <= q80) return '#fdae61';
+        return '#d7191c';
+      };
+
+      function getLargestPolygonFeature(feature) {
+        if (!feature || !feature.geometry) return feature;
+        if (feature.geometry.type === 'Polygon') return feature;
+        if (feature.geometry.type !== 'MultiPolygon') return feature;
+        const polygons = feature.geometry.coordinates || [];
+        let best = null;
+        let bestArea = -1;
+        polygons.forEach((coords) => {
+          const candidate = {
+            type: 'Feature',
+            properties: feature.properties || {},
+            geometry: { type: 'Polygon', coordinates: coords }
+          };
+          const area = turf.area(candidate);
+          if (area > bestArea) {
+            bestArea = area;
+            best = candidate;
+          }
+        });
+        return best || feature;
+      }
+
+      function getLabelPoint(feature, areaName) {
+        if (currentView === 'district' && districtLabelLatLng[areaName]) {
+          const [lat, lng] = districtLabelLatLng[areaName];
+          return L.latLng(lat, lng);
+        }
+        const baseFeature = getLargestPolygonFeature(feature);
+        let center = null;
+        try {
+          let point = turf.centerOfMass(baseFeature);
+          if (!point || point.geometry?.type !== 'Point' || !turf.booleanPointInPolygon(point, baseFeature)) {
+            point = turf.pointOnFeature(baseFeature);
+          }
+          if (point?.geometry?.type === 'Point') {
+            const [lng, lat] = point.geometry.coordinates;
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+              center = L.latLng(lat, lng);
+            }
+          }
+        } catch (e) {
+          center = null;
+        }
+        return center;
+      }
+
+      function avoidOverlap(latlng) {
+        const placedLabelPoints = avoidOverlap._placed || (avoidOverlap._placed = []);
+        if (!latlng) return latlng;
+        const minDistance = 46;
+        const base = map.latLngToLayerPoint(latlng);
+        const offsets = [
+          [0, 0], [18, 0], [-18, 0], [0, 18], [0, -18],
+          [24, 14], [-24, 14], [24, -14], [-24, -14],
+          [34, 0], [-34, 0], [0, 30], [0, -30]
+        ];
+
+        for (const [dx, dy] of offsets) {
+          const candidate = L.point(base.x + dx, base.y + dy);
+          const overlaps = placedLabelPoints.some((p) => p.distanceTo(candidate) < minDistance);
+          if (!overlaps) {
+            placedLabelPoints.push(candidate);
+            return map.layerPointToLatLng(candidate);
+          }
+        }
+        placedLabelPoints.push(base);
+        return latlng;
+      }
+
+      boundaryLayer = L.geoJSON(boundariesGeoJson, {
+        // Track matched areas so we can surface unmatched API groups in sub-district mode.
+        // This is needed for Judea/Samaria nafot that have data but no polygon in this layer.
+        style: (feature) => {
+          const areaName = getFeatureAreaName(feature);
+          const value = registrationsByArea[areaName] || 0;
+          return {
+            color: '#667085',
+            weight: 1.2,
+            opacity: 0.9,
+            fillColor: colorFor(value),
+            fillOpacity: value ? 0.62 : 0.2
+          };
+        },
+        onEachFeature: (feature, polygon) => {
+          const areaName = getFeatureAreaName(feature) || 'Unknown';
+          if (currentView === 'nafa') {
+            matchedAreas.add(areaName);
+          }
+        }
+      }).addTo(map);
+
+      const drawLabels = () => {
+        avoidOverlap._placed = [];
+        const t = uiText[currentLanguage];
+        const labelClass = currentLanguage === 'en' ? 'nafa-label lang-en' : 'nafa-label';
+
+        if (currentView === 'nafa') {
+          boundaryLayer.eachLayer((polygon) => {
+            const feature = polygon.feature;
+            const areaName = getFeatureAreaName(feature) || 'Unknown';
+            const value = registrationsByArea[areaName] || 0;
+            const displayName = getDisplayAreaName(areaName);
+
+            let center = getLabelPoint(feature, areaName) || polygon.getBounds().getCenter();
+            center = avoidOverlap(center);
+            const labelHtml =
+              `<div class=\"${labelClass}\">` +
+              `<div class=\"name\">${displayName}</div>` +
+              `<div class=\"value\">${value.toLocaleString(t.locale)}</div>` +
+              `</div>`;
+
+            L.tooltip({
+              permanent: true,
+              direction: 'center',
+              className: 'nafa-center-label',
+              opacity: 1
+            })
+              .setLatLng(center)
+              .setContent(labelHtml)
+              .addTo(labelLayer);
+          });
+        }
+
+        if (currentView === 'nafa') {
+          const unmatchedTotal = Object.entries(registrationsByArea).reduce((sum, [name, value]) => {
+            if (matchedAreas.has(name)) return sum;
+            return sum + (Number.isFinite(value) ? value : 0);
+          }, 0);
+
+          if (unmatchedTotal > 0) {
+            const displayName = currentLanguage === 'en' ? 'Judea and Samaria Area' : 'אזור יהודה ושומרון';
+            const labelHtml =
+              `<div class=\"${labelClass}\">` +
+              `<div class=\"name\">${displayName}</div>` +
+              `<div class=\"value\">${unmatchedTotal.toLocaleString(t.locale)}</div>` +
+              `</div>`;
+
+            L.tooltip({
+              permanent: true,
+              direction: 'center',
+              className: 'nafa-center-label',
+              opacity: 1
+            })
+              .setLatLng(judeaSamariaSubdistrictLatLng)
+              .setContent(labelHtml)
+              .addTo(labelLayer);
+          }
+        }
+
+        if (currentView === 'district') {
+          Object.entries(districtLabelLatLng).forEach(([districtName, coords]) => {
+            const value = registrationsByArea[districtName];
+            if (!Number.isFinite(value)) return;
+            const displayName = getDisplayAreaName(districtName);
+            const [lat, lng] = coords;
+            const labelHtml =
+              `<div class=\"${labelClass}\">` +
+              `<div class=\"name\">${displayName}</div>` +
+              `<div class=\"value\">${value.toLocaleString(t.locale)}</div>` +
+              `</div>`;
+
+            L.tooltip({
+              permanent: true,
+              direction: 'center',
+              className: 'nafa-center-label',
+              opacity: 1
+            })
+              .setLatLng([lat, lng])
+              .setContent(labelHtml)
+              .addTo(labelLayer);
+          });
+        }
+      };
+
+      if (currentView === 'nafa') {
+        // no-op: labels now drawn in drawLabels()
+      }
+
+      if (fitToBounds && boundaryLayer.getBounds().isValid()) {
+        map.once('moveend', () => {
+          drawLabels();
+        });
+        map.fitBounds(boundaryLayer.getBounds(), { padding: [20, 20], animate: false });
+      } else {
+        drawLabels();
+      }
+    }
+
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([31.9, 35.0], 8);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20,
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+    }).addTo(map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20,
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      pane: 'overlayPane'
+    }).addTo(map);
+
+    Promise.all([
+      fetch(nafaGeoJsonUrl).then((res) => res.json()),
+      fetch(districtGeoJsonUrl).then((res) => res.json()),
+      fetch(registrationsApiUrl).then((res) => res.json())
+    ])
+      .then(([nafaGeojson, districtGeojson, registrationsPayload]) => {
+        const records = registrationsPayload?.result?.records || [];
+        boundariesByView.nafa = nafaGeojson;
+        boundariesByView.district = districtGeojson;
+        registrationsByView.nafa = aggregateRegistrationsByField(records, 'nafa_nm', normalizeNafaName);
+        registrationsByView.district = aggregateRegistrationsByField(records, 'mahoz_nm', normalizeMahozName);
+        updateLanguageUI();
+        renderBoundaries(true);
+        requestAnimationFrame(updateBackdrop);
+      })
+      .catch((err) => {
+        console.error(err);
+        alert('Failed to load boundaries or registration API data.');
+      });
+
+    document.getElementById('viewNafaBtn').addEventListener('click', () => {
+      if (currentView === 'nafa') return;
+      currentView = 'nafa';
+      document.getElementById('viewNafaBtn').classList.add('active');
+      document.getElementById('viewDistrictBtn').classList.remove('active');
+      updateBackdrop();
+      renderBoundaries(true);
+    });
+
+    document.getElementById('viewDistrictBtn').addEventListener('click', () => {
+      if (currentView === 'district') return;
+      currentView = 'district';
+      document.getElementById('viewDistrictBtn').classList.add('active');
+      document.getElementById('viewNafaBtn').classList.remove('active');
+      updateBackdrop();
+      renderBoundaries(true);
+    });
+
+    document.getElementById('langToggleBtn').addEventListener('click', () => {
+      currentLanguage = currentLanguage === 'he' ? 'en' : 'he';
+      updateLanguageUI();
+      renderBoundaries(false);
+    });
+
+    document.getElementById('zoomIn').addEventListener('click', () => map.zoomIn());
+    document.getElementById('zoomOut').addEventListener('click', () => map.zoomOut());
+    map.on('zoomend', () => {
+      if (!boundariesByView[currentView] || !registrationsByView[currentView]) return;
+      renderBoundaries(false);
+    });
+    window.addEventListener('resize', updateBackdrop);
+  </script>
+</body>
+</html>
