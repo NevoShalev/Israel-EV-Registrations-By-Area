@@ -267,8 +267,8 @@
 
     const registrationsApiUrl =
       'https://data.gov.il/api/3/action/datastore_search?resource_id=07421a4e-5b12-4444-9173-5ca297b31f79&distinct=false&plain=true&limit=100&include_total=true&records_format=objects';
-    const nafaGeoJsonUrl = 'https://services7.arcgis.com/PB5LjwcnCrkGJLZ7/arcgis/rest/services/%D7%A0%D7%A4%D7%95%D7%AA_%D7%99%D7%A9%D7%A8%D7%90%D7%9C_%D7%9E%D7%A9%D7%A8%D7%93_%D7%94%D7%A4%D7%A0%D7%99%D7%9D/FeatureServer/5/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson';
-    const districtGeoJsonUrl = 'https://services7.arcgis.com/PB5LjwcnCrkGJLZ7/arcgis/rest/services/Mahozot_muni_il/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson';
+    const nafaGeoJsonUrl = 'https://services7.arcgis.com/PB5LjwcnCrkGJLZ7/arcgis/rest/services/%D7%A0%D7%A4%D7%95%D7%AA_%D7%99%D7%A9%D7%A8%D7%90%D7%9C_%D7%9E%D7%A9%D7%A8%D7%93_%D7%94%D7%A4%D7%A0%D7%99%D7%9D/FeatureServer/5/query?where=1%3D1&outFields=Nafa&returnGeometry=true&outSR=4326&maxAllowableOffset=0.002&f=geojson';
+    const districtGeoJsonUrl = 'https://services7.arcgis.com/PB5LjwcnCrkGJLZ7/arcgis/rest/services/Mahozot_muni_il/FeatureServer/0/query?where=1%3D1&outFields=Mahoz&returnGeometry=true&outSR=4326&maxAllowableOffset=0.002&f=geojson';
 
     function normalizeNafaName(name) {
       if (!name) return '';
